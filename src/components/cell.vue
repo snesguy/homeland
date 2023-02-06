@@ -3,28 +3,27 @@ export default {
     props: {
         playerId: String,
         age: Number,
+        hp: Number,
         pos: {x:0,y:0},
         bgColor: {
             type: String,
             default: "#0099CC"
         },
+        isMe: Boolean,
     },
     data() {
       return {
-        audioNani: new Audio("../src/assets/audio/nani.mp3"),
-        audioTuturu: new Audio("../src/assets/audio/tuturu1.mp3"),
-        audioCrying: new Audio("../src/assets/audio/babyCry.mp3"),
-        newBorn: new String("../src/assets/images/index.jpg"),
-        tuturu: new String("../src/assets/images/tuturu.jpg"),
-        troll: new String("../src/assets/images/Trollface_non-free.png"),
+        newBorn: "../src/assets/images/index.jpg",
+        tuturu: "../src/assets/images/tuturu.jpg",
+        troll: "../src/assets/images/Trollface_non-free.png",
       }
     },
     computed: {
         cellStyle() {
             return {
                 "background-color": getColorForPlayerId(this.playerId),
-                'transition-delay': ((this.pos.x + this.pos.y)*30)+"ms",
-                'background-image': this.age==0&&this.playerId!=null?'url('+this.newBorn+')':'',
+                //'transition-delay': ((this.pos.x + this.pos.y)*30)+"ms",
+                'background-image': this.hp==0&&this.playerId!=null?'url('+this.newBorn+')':'',
                 "animation-delay": ((this.pos.x + this.pos.y) * 30) + "ms",
             };
         }
@@ -36,19 +35,15 @@ export default {
 
                 var randNum = Math.floor(Math.random() * randMod);
 
-                console.log(randMod);
-
                 if (randNum <= 1) {
-                    this.audioCrying.play();
+                    new Audio("../src/assets/audio/nani.mp3").play();
                     resetPsuedoRandomMod()
                 } else if (randNum >= 2 && randNum <= 14) {
-                    this.audioTuturu.play();
+                    new Audio("../src/assets/audio/tuturu1.mp3").play();
                     resetPsuedoRandomMod()
                 } else if (randNum >= 15 && randNum <= 50) {
-                    this.audioNani.play();
+                    new Audio("../src/assets/audio/babyCry.mp3").play();
                     resetPsuedoRandomMod()
-                } else {
-                    return
                 }
             }
         }
@@ -57,23 +52,44 @@ export default {
 </script>
 
 <template>
-    <div :style="cellStyle" :class="'cell'" @click="randAudio()">{{ pos.y }}</div>
+    <div class="asdf">
+        <div :style="cellStyle" class="cell" @click="randAudio()">{{ ((isMe)?'⭐':'') }}{{ age }}
+            <div class="manualBirthing" @click="randAudio()" :style="{display:((hp===0)&&(playerId !== null))?'block':'none'}"></div>
+        </div>
+    </div>
 </template>
 
 <style scoped>
-    .cell {
+    .asdf {
+        font-size: 15px;
         width: 2em;
         height: 2em;
         border: 0.1em solid black;
         margin: 0.1em;
+        position: relative;
+        display: grid;
+        place-items: center;
+    }
+
+    .manualBirthing {
         background-size: cover;
         background-repeat: none;
-        transition: scale 200ms, background-color 600ms, background-image 1s, transform 0.8s;
         background-blend-mode: multiply;
-        font-size: 15px;
+        opacity: 0.3;
+        background-image: url(../assets/images/index.jpg);
+        position: absolute;
+        top: 0; bottom: 0; left: 0; right: 0;
+    }
+
+    .cell {
+        color: grey;
+        background-size: cover;
+        background-repeat: none;
+        background-blend-mode: multiply;
+        transition: scale 200ms, background-color 100ms, background-image 1s, transform 0.8s;
         user-select: none;
-        /*animation: wiggle 1000ms;
-        animation-iteration-count: infinite;*/
+        position: absolute;
+        top: 0; bottom: 0; left: 0; right: 0;
     }
     
     .cell:hover {
@@ -85,7 +101,7 @@ export default {
         perspective: 1000px;
         transform-style: preserve-3d;
         transform: rotateY(180deg);
-        background-image: url(../assets/images/Trollface_non-free.png);
+        background-image: url(../assets/images/Trollface_non-free.png) !important;
         background-blend-mode: multiply;
         animation: shake 0.5s;
         animation-iteration-count: infinite;
@@ -108,16 +124,20 @@ export default {
     @keyframes wiggle {
         0% {
             transform: translate(0%, 0%);
+            z-index: 0;
         }
 
         50% {
             transform: translate(-30%, -30%) rotateY(180deg) skew(30deg, 20deg);
+            z-index: 1000;
             scale: 150%;
         }
         
 
         100% {
             scale: 110%;
+            
+            z-index: 0;
             transform: translate(0%, 0%) rotateY(360deg) skew(0deg, 0deg);
         }
     }

@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "chance": "^1.1.9",
+    "chart.js": "^4.2.0",
     "chroma-js": "2.4.2",
     "luxon": "^3.2.1",
     "reconnecting-websocket": "^4.4.0",

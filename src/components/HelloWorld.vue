@@ -2,6 +2,7 @@
 import cell from './cell.vue'
 import ReconnectingWebSocket from 'reconnecting-websocket'
 import { DateTime, Interval } from 'luxon'
+
 export default {
   data() {
   	return {
@@ -15,8 +16,14 @@ export default {
       now: DateTime.now(),
       cooldownEndTime: DateTime.now(),
       playerId:null,
-      playerList:null,
+      playerList:[],
       playerNames:{},
+      childrenLimit: 15,
+      childrenLimitReset: 15,
+      audioNani: new Audio("../src/assets/audio/nani.mp3"),
+      audioTuturu: new Audio("../src/assets/audio/tuturu1.mp3"),
+      audioCrying: new Audio("../src/assets/audio/babyCry.mp3"),
+      lastBoard: true
   	}
 	},
   components: {
@@ -38,15 +45,21 @@ export default {
         component.currFrame = msg.board.currFrame
         component.currFrameEndTime = DateTime.fromISO(msg.board.nextRoundTime);
         component.currFrameStartTime = DateTime.now();
+        component.childrenLimit += 0.1
       }
       if(msg.type === 'playerList') {
         //set players
         component.playerList = msg.players
         component.playerNames = msg.playerNames
+        //place your player at top
+      }
+      if (msg.type === 'boardReset') {
+        this.childrenLimit = this.childrenLimitReset
       }
       if(msg.type === 'yourPlayerInfo') {
         //set player info
         component.playerId = msg.playerId
+        component.playerList.unshift(component.playerList.splice(component.playerList.indexOf(component.playerId), 1)[0])
       }
     }
 
@@ -55,6 +68,12 @@ export default {
     }
   },
   computed: {
+    getColorForPlayerId() {
+      return getColorForPlayerId(this.playerId)
+    },
+    createPieChart() {
+
+    }
     // cellStyle() {
     //   return {
     //       "background-color": getColorForPlayerId(this.playerId)
@@ -62,22 +81,32 @@ export default {
     // },
   },
   methods: {
+
     cellStyle(id) {
       return {
-          "background-color": getColorForPlayerId(id)
+          "background-color": getColorForPlayerId(id),
       };
+    },
+    bgStyle(playerId) {
+      return {
+        "filter": `hue-rotate(${getHueForPlayerId(playerId)+10}deg) brightness(0.5)`
+      }
     },
     addCell(index) {
       console.log('attempting adding cell')
 
-      if(this.board.flat()[index].playerId === null) {
+      if(this.board[index%this.boardWidth][Math.floor(index/this.boardWidth)].playerId === null && this.childrenLimit > 0) {
 
         let col = index % this.boardWidth
         let row = Math.floor(index / this.boardWidth)
         
         this.connection.send(JSON.stringify({type:'addCell', x:col , y:row}))
-      }
 
+        this.childrenLimit--;
+      } else if (this.childrenLimit <= 0) {
+        console.log ("you've run out of children!")
+        this.audioNani.play();
+      }
     },
     getFrameProgress() {
       let frameLength = Interval.fromDateTimes(this.currFrameStartTime, this.currFrameEndTime).length('seconds');
@@ -94,16 +123,22 @@ export default {
 
 <template>
   <div class="app-container" :style="cellStyle(playerId)">
-    <div id="curr-frame" :style="{'background':`linear-gradient(to right, lightgray ${getFrameProgressRatioAsPercentString()}, transparent ${getFrameProgressRatioAsPercentString()})`}">Current Frame: {{ currFrame }}</div>
+    <div id="persianBg" :style="bgStyle(playerId)"></div>
+    <!-- <div id="children-count">{{this.childrenLimit}}</div> -->
+    <div id="curr-frame" :style="{'background':`linear-gradient(to right, ${getColorForPlayerId} ${getFrameProgressRatioAsPercentString()}, lightgray ${getFrameProgressRatioAsPercentString()})`}">Current Frame: {{ currFrame }}</div>
     <div class="grid-container" :style="{'grid-template-columns':`repeat(${boardWidth}, 1fr)`}">
       <div class="grid-item" v-for="(item, index) in board.flat()" :key="index">
-          <cell :playerId="item.playerId" :age="item.age" :pos="{x:index%boardWidth,y:Math.floor(index/boardWidth)}" @click="addCell(index)"/>
+        <!-- board.flat() is flattening the wrong way around. only index is trustworthy -->
+          <cell :isMe="(playerId===board[index%boardWidth][Math.floor(index/boardWidth)].playerId)" :playerId="board[index%boardWidth][Math.floor(index/boardWidth)].playerId" :age="board[index%boardWidth][Math.floor(index/boardWidth)].hp" :hp="board[index%boardWidth][Math.floor(index/boardWidth)].age" :pos="{x:index%boardWidth,y:Math.floor(index/boardWidth)}" @click="addCell(index)"/>
       </div>
     </div>
-    <div id="players-grid">
-      <div class="player-item grid-item" v-for="(item,index) in playerList" :key="index">
-        <div :style="cellStyle(item)">{{playerNames[item]}}</div>
+    <div id="players-list">
+      <div class="player-item grid-item" v-for="(currPlayerId,index) in playerList" :key="index">
+        <div :style="cellStyle(currPlayerId)">{{(currPlayerId === playerId)?'⭐':''}}{{playerNames[currPlayerId]}}{{ currPlayerId===playerId ? ' : ' + childrenLimit.toFixed(2) : ''}}</div>
       </div>
+    </div>
+    <div id="elections-panel">
+
     </div>
   </div>
 </template>
@@ -116,6 +151,16 @@ h1 {
   top: -10px;
 }
 
+#persianBg {
+  z-index: 0;
+  background-image: url(../assets/images/paisleyRGBnoiseLevel3.png);
+  background-size: cover;
+  background-repeat: no-repeat;
+  background-position: center;
+  position: fixed;
+  top:0;bottom:0;left:0;right:0;
+}
+
 h3 {
   font-size: 1.2rem;
 }
@@ -126,6 +171,7 @@ h3 {
 }
 
 .app-container {
+  position: absolute;
   margin: auto;
   min-width: 100vw;
   min-height: 100vh;
@@ -138,14 +184,18 @@ h3 {
 }
 
 #curr-frame {
-  color: black;
+  color: white;
   min-width: 50vw;
   display: grid;
   place-items: center;
 }
 
-#players-grid {
+#players-list {
   font-size: 1.5rem;
+  position: fixed;
+  right: 0;
+  top: 0;
+  bottom: 0;
 }
 
 .player-item {

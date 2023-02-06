@@ -22,13 +22,21 @@ window.getColorForPlayerId = function(playerId) {
     let chance = Chance(hashCode(playerId));
     return chroma.hsv(chance.integer({ min: 0, max: 359 }), 1, 0.8).css();
 }
-window['PsuedoRandomMod'] = 1500
+
+window.getHueForPlayerId = function(playerId) {
+    if (playerId === null) {
+        return chroma('white').css();
+    }
+    let chance = Chance(hashCode(playerId));
+    return chance.integer({ min: 0, max: 359 })
+}
+window['PsuedoRandomMod'] = 10000
 window.getPsuedoRandomMod = function() {
     window['PsuedoRandomMod'] -= 10
     return window['PsuedoRandomMod']
 }
 window.resetPsuedoRandomMod = function() {
-    window['PsuedoRandomMod'] = 1500
+    window['PsuedoRandomMod'] = 10000
 }
 
 const app = createApp(App)
