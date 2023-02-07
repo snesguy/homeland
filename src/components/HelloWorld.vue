@@ -32,7 +32,16 @@ export default {
   created: function() {
     let component = this
     console.log("Starting connection to WebSocket Server")
-    component.connection = new ReconnectingWebSocket("ws://10.220.228.117/ws")
+    // Source: https://stackoverflow.com/questions/10406930/how-to-construct-a-websocket-uri-relative-to-the-page-uri
+    var loc = window.location, new_uri;
+    if (loc.protocol === "https:") {
+        new_uri = "wss:";
+    } else {
+        new_uri = "ws:";
+    }
+    new_uri += "//" + loc.host;
+    new_uri += loc.pathname + "ws";
+    component.connection = new ReconnectingWebSocket(new_uri)
 
     setInterval(() => {component.now = DateTime.now()}, 25);
 
